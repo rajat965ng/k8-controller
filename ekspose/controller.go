@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v12 "k8s.io/client-go/informers/apps/v1"
 	"k8s.io/client-go/kubernetes"
@@ -32,7 +36,6 @@ func newController(clientset kubernetes.Interface, informer v12.DeploymentInform
 			DeleteFunc: c.deleteHandler,
 		},
 	)
-
 	return c
 }
 
@@ -53,25 +56,29 @@ func (c *controller) worker() {
 	}
 }
 
-func (c *controller) processItem() bool  {
-	item,shutdown := c.queue.Get()
+func (c *controller) processItem() bool {
+	item, shutdown := c.queue.Get()
 	if shutdown {
 		return false
 	}
 
-	key,err := cache.MetaNamespaceKeyFunc(item)
-	if err!=nil  {
+	// If everything goes fine with syncDeployment then "item" should not be processed again
+	defer c.queue.Forget(item)
+
+	key, err := cache.MetaNamespaceKeyFunc(item)
+	if err != nil {
 		panic(err)
 	}
 
-	ns,name,err := cache.SplitMetaNamespaceKey(key)
-	if err!=nil {
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
 		panic(err)
 		return false
 	}
 
-	err = c.syncDeployment(ns,name)
-	if err!=nil {
+	err = c.syncDeployment(ns, name)
+	if err != nil {
+		//re-try logic
 		panic(err)
 		return false
 	}
@@ -79,11 +86,42 @@ func (c *controller) processItem() bool  {
 	return true
 }
 
-func (c *controller) syncDeployment(ns string,name string) error  {
-//create  service
-//create ingress
+func (c *controller) syncDeployment(ns, name string) error {
+	ctx := context.Background()
+	dep, err := c.deplister.Deployments(ns).Get(name)
+	if err != nil {
+		panic(err)
+	}
+
+	//create  service
+	//we have to modify this to  figure out  the port
+	//our deployment container is listening on
+	svc := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dep.Name,
+			Namespace: ns,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: depLabels(*dep),
+			Ports: []corev1.ServicePort{
+				{
+					Name: "http",
+					Port: 80,
+				},
+			},
+		},
+	}
+	_, err = c.clientset.CoreV1().Services(ns).Create(ctx, &svc, metav1.CreateOptions{})
+	if err != nil {
+		fmt.Printf("\nError in creating service: %s",err.Error())
+	}
+	//create ingress
 
 	return nil
+}
+
+func depLabels(dep appsv1.Deployment) map[string]string {
+	return dep.Spec.Template.Labels
 }
 
 func (c *controller) addHandler(obj interface{}) {

@@ -30,6 +30,7 @@ func main() {
 	informer := informers.NewSharedInformerFactory(clientset, 30*time.Minute)
 
 	controller := newController(clientset, informer.Apps().V1().Deployments())
+
 	informer.Start(ch)
 	controller.run(ch)
 	fmt.Println(informer)
