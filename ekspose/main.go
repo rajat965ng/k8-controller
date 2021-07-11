@@ -14,7 +14,7 @@ func main() {
 	kubeconfig := flag.String("kubeconfig", "/Users/rajnigam/.kube/config", "location of kubeconfig file")
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error in loading kubeconfig %s\n",err.Error())
 		config, err = rest.InClusterConfig()
 		if err != nil {
 			panic(err)
@@ -23,7 +23,7 @@ func main() {
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error in loading clientset %s\n",err.Error())
 	}
 
 	ch := make(chan struct{})

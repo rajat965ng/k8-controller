@@ -69,12 +69,12 @@ func (c *controller) processItem() bool {
 
 	key, err := cache.MetaNamespaceKeyFunc(item)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error in getting MetaNamespaceKeyFunc %s\n",err.Error())
 	}
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error in getting SplitMetaNamespaceKey %s\n",err.Error())
 		return false
 	}
 
@@ -111,7 +111,7 @@ func (c *controller) syncDeployment(ns, name string) error {
 	ctx := context.Background()
 	dep, err := c.deplister.Deployments(ns).Get(name)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error in listing deployment: %s \n",err.Error())
 	}
 
 	//create  service
