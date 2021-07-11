@@ -5,7 +5,7 @@
 - go get k8s.io/client-go/kubernetes@v0.20.0
 
 [build]
--  env GOOS=linux GOARCH=arm go build
+-  env GOOS=linux GOARCH=arm CGO_ENABLED=0 go build
 
 [role]
 - kubectl  create role podAndDeploy --resource pods,deployments --verb list
